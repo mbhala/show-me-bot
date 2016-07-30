@@ -1,0 +1,27 @@
+{
+  "name": "show-me-bot",
+  "version": "0.0.1",
+  "description": "A Slack bot that shows something",
+  "main": "app.js",
+  "scripts": {
+    "start" : "node app.js",
+    "test": "./node_modules/.bin/mocha tests/*.test.js"
+  },
+  "keywords": [
+    "slack",
+    "bot"
+  ],
+  "author": "mbhala",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^2.0.1",
+    "botkit": "^0.2.2",
+    "lodash": "^4.14.0",
+    "request": "^2.74.0",
+    "tracer": "^0.8.3"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.5.3"
+  }
+}
