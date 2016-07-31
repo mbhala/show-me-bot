@@ -14,8 +14,8 @@ PORT = process.env.PORT || 3123;
 controller.setupWebserver(PORT, function (err, webserver) {
   app = webserver;
   controller.createWebhookEndpoints(webserver);
-  app.get('/hello', function( req, res) {
-    res.status(200).send("Hello man!");
+  app.get('/', function( req, res) {
+    res.status(200).send("Hello! Everthing is A OK!");
   });
 });
 

@@ -13,6 +13,9 @@
   ],
   "author": "mbhala",
   "license": "MIT",
+  "engines": {
+   "node": "~5.10.1"
+ },
   "dependencies": {
     "async": "^2.0.1",
     "botkit": "^0.2.2",
