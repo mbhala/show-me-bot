@@ -11,7 +11,7 @@ describe('Test XKCD', function () {
   });
   it('should return a specific comic numbers metadata', function (done) {
     var comic_num = 2
-    xkcd.getComic(comic_num, function (err, res) {
+    xkcd.getComicNum(comic_num, function (err, res) {
       expect(err).to.not.exist;
       expect(res).to.have.all.keys('title','alttext', 'comic_url', 'img_url')
       expect(res.comic_url).to.be.equal(xkcd.XKCD_BASE_URL + comic_num.toString());
@@ -21,7 +21,7 @@ describe('Test XKCD', function () {
 
   it('should return the latest comics metadata if comic number is -1', function (done) {
     var comic_num = -1
-    xkcd.getComic(comic_num, function (err, res) {
+    xkcd.getComicNum(comic_num, function (err, res) {
       expect(err).to.not.exist;
       expect(res).to.have.all.keys('title','alttext', 'comic_url', 'img_url', 'latest_num')
       expect(res.comic_url).to.be.equal(xkcd.XKCD_BASE_URL);
