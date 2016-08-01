@@ -4,18 +4,19 @@
   "description": "A Slack bot that shows something",
   "main": "app.js",
   "scripts": {
-    "start" : "node app.js",
-    "test": "./node_modules/.bin/mocha tests/*.test.js"
+    "start": "node app.js",
+    "test": "mocha tests/*.test.js"
   },
   "keywords": [
     "slack",
+    "xkcd",
     "bot"
   ],
   "author": "mbhala",
   "license": "MIT",
   "engines": {
-   "node": "~5.10.1"
- },
+    "node": "~5.10.1"
+  },
   "dependencies": {
     "async": "^2.0.1",
     "botkit": "^0.2.2",
@@ -26,5 +27,16 @@
   "devDependencies": {
     "chai": "^3.5.0",
     "mocha": "^2.5.3"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mbhala/show-me-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mbhala/show-me-bot/issues"
+  },
+  "homepage": "https://github.com/mbhala/show-me-bot#readme"
 }
