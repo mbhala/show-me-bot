@@ -34,6 +34,7 @@ module.exports = {
         parsedMessage = getCommandName(message.text);
         if (parsedMessage.command === 'xkcd') {
           xkcdHelper.getComic(parsedMessage.args, function (xkcdComic) {
+            logger.info("Replying with : %j", xkcdComic);
             return bot.replyPublic(message, xkcdComic);
           });
         } else {

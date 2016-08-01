@@ -1,5 +1,6 @@
 var request = require('request'),
     async = require('async'),
+    logger = require('tracer').colorConsole(),
     _ = require('lodash'),
     DOMAIN_URL = 'http://xkcd.com/',
     METADATA_URL = 'info.0.json',
@@ -102,12 +103,14 @@ var getXkcdComic = function (whichComic, callback) {
     }
     default: {
       var comicNum = Number(whichComic);
+      logger.debug("Requested Comic Num : , %d", comicNum);
       if (!isNaN(comicNum)) {
         getComicNum(comicNum, function (err, metadata) {
           if (err) {
-            logger.warn('Error retrieving comic #%d, Getting Latest', comicNum);
+            logger.debug('Error retrieving comic #%d, Getting Latest', comicNum);
             getLatest( function (err, metadata) {
               if (!err) {
+                logger.debug('Got latest comic instead of requested');
                 metadata.feedback = 'Couldn\'t find comic #' + comicNum.toString();
                 metadata.feedback += ' Latest Comic is #' + metadata.latest_num.toString();
                 callback(null, metadata);
@@ -149,6 +152,7 @@ var formatMessage = function (xkcdMetadata, callback) {
 * if number, try to get the comic number. If it doesnt exist return the latest one
 */
 var xkcdHandler = function (req_args, callback) {
+  logger.debug('Req Args ', req_args);
   var xkcd_args, xkcd_data;
   if (req_args.length > 0 ) {
     xkcd_args = req_args[0];

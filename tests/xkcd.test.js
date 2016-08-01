@@ -38,4 +38,14 @@ describe('Test XKCD', function () {
     });
   });
 
+  it('should return the latest comics if a comic that is not published is requested', function (done) {
+    var comic_num = ['22222'];
+    xkcd.getComic(comic_num, function (res) {
+      expect(res).to.exist;
+      expect(res).to.have.all.keys('attachments');
+      expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
+      expect(res.attachments[0].title_link).to.be.equal(xkcd.XKCD_BASE_URL);
+      done();
+    });
+  });
 });
