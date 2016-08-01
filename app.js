@@ -6,7 +6,7 @@ var Botkit = require('botkit'),
     PORT;
 
 controller = Botkit.slackbot({
-  debug: true
+  debug: false
 });
 
 PORT = process.env.PORT || 3123;

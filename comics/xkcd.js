@@ -1,6 +1,6 @@
 var request = require('request'),
     async = require('async'),
-    logger = require('tracer').colorConsole(),
+    logger = require('tracer').colorConsole({level: 'info'}),
     _ = require('lodash'),
     DOMAIN_URL = 'http://xkcd.com/',
     METADATA_URL = 'info.0.json',
