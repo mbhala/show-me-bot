@@ -2,13 +2,19 @@ var reqHelper = require('../helpers/requestUtil.js'),
     async = require('async'),
     logger = require('tracer').colorConsole({level: 'info'}),
     _ = require('lodash'),
+    config = require('../local.js'),
     DOMAIN_URL = 'http://xkcd.com/',
     METADATA_URL = 'info.0.json',
     XKCD_TEMPLATE,
-    XKCD_UNRECOGINZED_OPTION;
+    XKCD_UNRECOGINZED_OPTION,
+    CSE_ID,
+    CSE_KEY;
+
+CSE_KEY = config.cseKey;
+CSE_ID = config.cdeId;
 
 XKCD_UNRECOGINZED_OPTION = 'I dont undertstand that option :disappointed: '
-XKCD_UNRECOGINZED_OPTION += '\n Please try one of these options `/showme xkcd [latest|random|comic_num]`';
+XKCD_UNRECOGINZED_OPTION += '\n Please try one of these options `/showme xkcd [latest|random|comicNum]`';
 
 XKCD_TEMPLATE = {
   fallback: 'You broke it.. There should be a comic here..',
@@ -27,7 +33,20 @@ var FALLBACK_MSG = {
   text: 'Something went wrong in fetching the comic :disappointed: Please Try again.',
   icon_emoji: ':skull_and_crossbones:'
 };
+var searchComic = function (searchQuery, callback) {
+  // https://www.googleapis.com/customsearch/v1?q=love&cx=017273590732935865296%3Alfzti91ua_8&start=1&key={YOUR_API_KEY}
+  var searchURL = 'https://www.googleapis.com/customsearch/v1',
+      searchParams = {
+        q: searchQuery,
+        cx: CSE_ID,
+        key: CSE_KEY
+      };
+  reqHelper.doGET(searchURL, searchParams, function (err, searchResult) {
+    if (err) {
 
+    }
+  });
+};
 var getLatest =  function (callback) {
   var result;
   reqHelper.doGET(DOMAIN_URL + METADATA_URL, null, function(err, jsonResult) {
@@ -39,14 +58,23 @@ var getLatest =  function (callback) {
   });
 };
 
-var getComicNum = function ( comic_num, callback) {
-  if (comic_num < 0) {
+var getComicNum = function ( comicNum, callback) {
+  if (comicNum < 0) {
     return this.getLatest(callback);
   }
-  var metadata_url = DOMAIN_URL + comic_num.toString() + '/' + METADATA_URL;
+  var metadata_url = DOMAIN_URL + comicNum.toString() + '/' + METADATA_URL;
   reqHelper.doGET(metadata_url, null, function (err, jsonResult) {
     if (err) {
-      callback(err, null);
+      getLatest( function (err, jsonResult) {
+        if (!err) {
+          logger.debug('Got latest comic instead of requested');
+          jsonResult.feedback = 'Couldn\'t find comic #' + comicNum.toString();
+          jsonResult.feedback += ' Latest Comic is #' + jsonResult.num.toString();
+          callback(null, jsonResult);
+        } else {
+          callback(err, null);
+        }
+      });
     } else {
       callback(null, jsonResult);
     }
@@ -60,13 +88,13 @@ var getRandom = function (callback) {
         if (err) {
           next(err, null);
         } else {
-          var comic_num = Math.floor(Math.random() * latestMetadata['num'] +1);
-          next(null, comic_num);
+          var comicNum = Math.floor(Math.random() * latestMetadata['num'] +1);
+          next(null, comicNum);
         }
       });
     },
-    function (comic_num, next) {
-      getComicNum(comic_num, next);
+    function (comicNum, next) {
+      getComicNum(comicNum, next);
     }
   ],
   function (err, result) {
@@ -90,23 +118,7 @@ var getXkcdComic = function (whichComic, callback) {
       var comicNum = Number(whichComic);
       logger.debug("Requested Comic Num : , %d", comicNum);
       if (!isNaN(comicNum)) {
-        getComicNum(comicNum, function (err, metadata) {
-          if (err) {
-            logger.debug('Error retrieving comic #%d, Getting Latest', comicNum);
-            getLatest( function (err, metadata) {
-              if (!err) {
-                logger.debug('Got latest comic instead of requested');
-                metadata.feedback = 'Couldn\'t find comic #' + comicNum.toString();
-                metadata.feedback += ' Latest Comic is #' + metadata.num.toString();
-                callback(null, metadata);
-              } else {
-                callback(err, null);
-              }
-            });
-          } else {
-            callback(null, metadata);
-          }
-        });
+        getComicNum(comicNum, callback);
       } else {
         logger.error('unrecognized option %s passed', whichComic);
         callback(XKCD_UNRECOGINZED_OPTION, null);
@@ -142,7 +154,7 @@ var xkcdHandler = function (req_args, callback) {
   logger.debug('Req Args ', req_args);
   var xkcd_args, xkcd_data;
   if (req_args.length > 0 ) {
-    xkcd_args = req_args[0];
+    xkcd_args = req_args.join(' ');
   } else {
     xkcd_args = 'random';
   }
