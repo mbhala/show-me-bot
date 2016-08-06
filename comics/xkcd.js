@@ -1,4 +1,4 @@
-var request = require('request'),
+var reqHelper = require('../helpers/requestUtil.js'),
     async = require('async'),
     logger = require('tracer').colorConsole({level: 'info'}),
     _ = require('lodash'),
@@ -29,19 +29,12 @@ var FALLBACK_MSG = {
 };
 
 var getLatest =  function (callback) {
-  request(DOMAIN_URL + METADATA_URL, function (err, res, body) {
-    if (!err && res.statusCode == 200) {
-      var reqResult = JSON.parse(body);
-      var result = {
-        'title': reqResult['title'],
-        'alttext': reqResult['alt'],
-        'comic_url': DOMAIN_URL ,
-        'img_url': reqResult['img'],
-        'latest_num' : reqResult['num']
-      };
-      return callback(null, result);
+  var result;
+  reqHelper.doGET(DOMAIN_URL + METADATA_URL, null, function(err, jsonResult) {
+    if (err) {
+      callback(err, null);
     } else {
-      return callback(err, null);
+      callback(null, jsonResult);
     }
   });
 };
@@ -50,20 +43,12 @@ var getComicNum = function ( comic_num, callback) {
   if (comic_num < 0) {
     return this.getLatest(callback);
   }
-  var comic_url = DOMAIN_URL + comic_num.toString(),
-      metadata_url = comic_url + '/' + METADATA_URL;
-  request(metadata_url, function (err, res, body) {
-    if (!err && res.statusCode == 200) {
-      var reqResult = JSON.parse(body);
-      var result = {
-        'title': reqResult['title'],
-        'alttext': reqResult['alt'],
-        'comic_url': comic_url,
-        'img_url': reqResult['img'],
-      };
-      return callback(null, result);
+  var metadata_url = DOMAIN_URL + comic_num.toString() + '/' + METADATA_URL;
+  reqHelper.doGET(metadata_url, null, function (err, jsonResult) {
+    if (err) {
+      callback(err, null);
     } else {
-      return callback('Not Found - 404', null);
+      callback(null, jsonResult);
     }
   });
 };
@@ -71,11 +56,11 @@ var getComicNum = function ( comic_num, callback) {
 var getRandom = function (callback) {
   async.waterfall([
     function (next) {
-      getLatest(function (err, result) {
+      getLatest(function (err, latestMetadata) {
         if (err) {
           next(err, null);
         } else {
-          var comic_num = Math.floor(Math.random() * result['latest_num'] +1);
+          var comic_num = Math.floor(Math.random() * latestMetadata['num'] +1);
           next(null, comic_num);
         }
       });
@@ -112,7 +97,7 @@ var getXkcdComic = function (whichComic, callback) {
               if (!err) {
                 logger.debug('Got latest comic instead of requested');
                 metadata.feedback = 'Couldn\'t find comic #' + comicNum.toString();
-                metadata.feedback += ' Latest Comic is #' + metadata.latest_num.toString();
+                metadata.feedback += ' Latest Comic is #' + metadata.num.toString();
                 callback(null, metadata);
               } else {
                 callback(err, null);
@@ -129,22 +114,24 @@ var getXkcdComic = function (whichComic, callback) {
     }
   }
 };
-var formatMessage = function (xkcdMetadata, callback) {
+
+var formatMessage = function (xkcdMetadata) {
   var formattedMessage = _.cloneDeep(XKCD_TEMPLATE),
       formattedAttachment = {'attachments' : [] };
 
   formattedMessage.title = xkcdMetadata.title;
-  formattedMessage.title_link = xkcdMetadata.comic_url;
-  formattedMessage.text = xkcdMetadata.alttext;
-  formattedMessage.image_url = xkcdMetadata.img_url;
+  formattedMessage.title_link = DOMAIN_URL + xkcdMetadata.num.toString();
+  formattedMessage.text = xkcdMetadata.alt;
+  formattedMessage.image_url = xkcdMetadata.img;
   if (xkcdMetadata.feedback) {
     formattedMessage.pretext = xkcdMetadata.feedback;
   } else {
     formattedMessage.pretext = 'Here is the comic ! ';
   }
   formattedAttachment.attachments.push(formattedMessage);
-  callback(null, formattedAttachment);
+  return formattedAttachment;
 }
+
 /**
 * we expect the argument to be either a number or the text 'latest' | 'random'
 * if 'latest' return the latest comic.
@@ -164,7 +151,8 @@ var xkcdHandler = function (req_args, callback) {
       getXkcdComic(xkcd_args, next);
     },
     function (result, next) {
-      formatMessage(result, next);
+      var formattedMessage = formatMessage(result);
+      next(null, formattedMessage);
     }
   ],
   function (err, xkcdComic) {

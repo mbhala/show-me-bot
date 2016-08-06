@@ -5,7 +5,7 @@ describe('Test XKCD', function () {
   it('should return a random xkcd comic metadata', function(done) {
     xkcd.getRandom(function (err, res) {
       expect(err).to.not.exist;
-      expect(res).to.have.all.keys('title', 'alttext', 'comic_url', 'img_url');
+      expect(res).to.have.any.keys('title', 'alt', 'num', 'img');
       done();
     });
   });
@@ -13,8 +13,8 @@ describe('Test XKCD', function () {
     var comic_num = 2
     xkcd.getComicNum(comic_num, function (err, res) {
       expect(err).to.not.exist;
-      expect(res).to.have.all.keys('title','alttext', 'comic_url', 'img_url')
-      expect(res.comic_url).to.be.equal(xkcd.XKCD_BASE_URL + comic_num.toString());
+      expect(res).to.have.any.keys('title','alt', 'num', 'img');
+      expect(res.num).to.be.equal(comic_num);
       done();
     });
   });
@@ -23,8 +23,7 @@ describe('Test XKCD', function () {
     var comic_num = -1
     xkcd.getComicNum(comic_num, function (err, res) {
       expect(err).to.not.exist;
-      expect(res).to.have.all.keys('title','alttext', 'comic_url', 'img_url', 'latest_num')
-      expect(res.comic_url).to.be.equal(xkcd.XKCD_BASE_URL);
+      expect(res).to.have.any.keys('title','alt', 'num', 'img');
       done();
     });
   });
@@ -32,8 +31,7 @@ describe('Test XKCD', function () {
   it('should return the latest comics metadata', function (done) {
     xkcd.getLatest(function (err, res) {
       expect(err).to.not.exist;
-      expect(res).to.have.all.keys('title','alttext', 'comic_url', 'img_url', 'latest_num')
-      expect(res.comic_url).to.be.equal(xkcd.XKCD_BASE_URL);
+      expect(res).to.have.any.keys('title','alt', 'num', 'img')
       done();
     });
   });
@@ -44,8 +42,7 @@ describe('Test XKCD', function () {
       expect(res).to.exist;
       expect(res).to.have.all.keys('attachments');
       expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
-      expect(res.attachments[0].title_link).to.be.equal(xkcd.XKCD_BASE_URL);
-      done();
+        done();
     });
   });
 });
