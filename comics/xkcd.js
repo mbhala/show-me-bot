@@ -149,6 +149,7 @@ var formatMessage = function (xkcdMetadata) {
   formattedMessage.title_link = DOMAIN_URL + xkcdMetadata.num.toString();
   formattedMessage.text = xkcdMetadata.alt;
   formattedMessage.image_url = xkcdMetadata.img;
+  formattedMessage.fallback = xkcdMetadata.title + ' ' + DOMAIN_URL + xkcdMetadata.num.toString();
   if (xkcdMetadata.feedback) {
     formattedMessage.pretext = xkcdMetadata.feedback;
   } else {
