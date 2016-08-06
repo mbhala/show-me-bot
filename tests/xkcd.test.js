@@ -9,6 +9,7 @@ describe('Test XKCD', function () {
       done();
     });
   });
+
   it('should return a specific comic numbers metadata', function (done) {
     var comic_num = 2
     xkcd.getComicNum(comic_num, function (err, res) {
@@ -43,6 +44,40 @@ describe('Test XKCD', function () {
       expect(res).to.have.all.keys('attachments');
       expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
         done();
+    });
+  });
+
+  it('should return an relevant comic for the given search term', function (done) {
+    var comic_num = ['python'];
+    xkcd.getComic(comic_num, function (res) {
+      expect(res).to.exist;
+      expect(res).to.have.all.keys('attachments');
+      expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
+      expect(res.attachments[0].title).to.equal('Python');
+      expect(res.attachments[0].title_link).to.equal('http://xkcd.com/353');
+        done();
+    });
+  });
+
+  it('should return an relevant comic for the given search term', function (done) {
+    var comic_num = ['battery', 'horse'];
+    xkcd.getComic(comic_num, function (res) {
+      expect(res).to.exist;
+      expect(res).to.have.all.keys('attachments');
+      expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
+      expect(res.attachments[0].title).to.equal('Password Strength');
+      expect(res.attachments[0].title_link).to.equal('http://xkcd.com/936');
+        done();
+    });
+  });
+
+  it('should return the latest comic if no results can be found for given search term', function (done) {
+    var comic_num = ['asdas'];
+    xkcd.getComic(comic_num, function (res) {
+      expect(res).to.exist;
+      expect(res).to.have.all.keys('attachments');
+      expect(res.attachments[0]).to.have.any.keys('pretext', 'author_name', 'author_link', 'author_icon', 'title', 'title_link', 'text', 'image_url');
+      done();
     });
   });
 });

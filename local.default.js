@@ -1,8 +1,6 @@
 //Rename this file to local.js and add configs as needed.
-var config = {
-  slackTokens: ['sometokens', 'clienttoken2']
-}
-
 module.exports = {
-  slackTokens: config.slackTokens
+  slackTokens: ['clientToken1','clientToken2'],
+  cseKey:'google_cse_key',
+  cseId: 'google_cse_id'
 }

@@ -11,7 +11,7 @@ var reqHelper = require('../helpers/requestUtil.js'),
     CSE_KEY;
 
 CSE_KEY = config.cseKey;
-CSE_ID = config.cdeId;
+CSE_ID = config.cseId;
 
 XKCD_UNRECOGINZED_OPTION = 'I dont undertstand that option :disappointed: '
 XKCD_UNRECOGINZED_OPTION += '\n Please try one of these options `/showme xkcd [latest|random|comicNum]`';
@@ -34,7 +34,6 @@ var FALLBACK_MSG = {
   icon_emoji: ':skull_and_crossbones:'
 };
 var searchComic = function (searchQuery, callback) {
-  // https://www.googleapis.com/customsearch/v1?q=love&cx=017273590732935865296%3Alfzti91ua_8&start=1&key={YOUR_API_KEY}
   var searchURL = 'https://www.googleapis.com/customsearch/v1',
       searchParams = {
         q: searchQuery,
@@ -42,8 +41,24 @@ var searchComic = function (searchQuery, callback) {
         key: CSE_KEY
       };
   reqHelper.doGET(searchURL, searchParams, function (err, searchResult) {
-    if (err) {
-
+    if (err || _.has(searchResult, 'items') === false) {
+      if (err) {
+        logger.error("Error doing search : %s", err.message);
+      } else {
+        logger.error("No results for search term %s ", searchQuery);
+      }
+      getLatest( function (err, jsonResult) {
+        if (!err) {
+          logger.debug('Got latest comic instead of requested searchQuery %s', searchQuery);
+          jsonResult.feedback = 'Couldn\'t find comic for search term \''  + searchQuery + '\'\n' ;
+          jsonResult.feedback += 'Fear not, here is the latest comic instead ! :smiley:';
+        }
+        callback(err, jsonResult);
+      });
+    } else {
+      logger.debug("Found results for search term %s", searchQuery);
+      var baseLink = _.get(searchResult, 'items[0].link');
+      reqHelper.doGET(baseLink + METADATA_URL, null, callback);
     }
   });
 };
@@ -120,8 +135,7 @@ var getXkcdComic = function (whichComic, callback) {
       if (!isNaN(comicNum)) {
         getComicNum(comicNum, callback);
       } else {
-        logger.error('unrecognized option %s passed', whichComic);
-        callback(XKCD_UNRECOGINZED_OPTION, null);
+        searchComic(whichComic, callback)
       }
     }
   }
@@ -169,11 +183,7 @@ var xkcdHandler = function (req_args, callback) {
   ],
   function (err, xkcdComic) {
     if (err) {
-      var errMsg = _.cloneDeep(FALLBACK_MSG);
-      if (err === XKCD_UNRECOGINZED_OPTION) {
-        errMsg.text = XKCD_UNRECOGINZED_OPTION;
-      }
-      return callback(errMsg);
+      return callback(FALLBACK_MSG);
     } else {
       return callback(xkcdComic);
     }
