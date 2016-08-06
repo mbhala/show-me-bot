@@ -1,14 +1,20 @@
-var request = require('request'),
+var reqHelper = require('../helpers/requestUtil.js'),
     async = require('async'),
     logger = require('tracer').colorConsole({level: 'info'}),
     _ = require('lodash'),
+    config = require('../local.js'),
     DOMAIN_URL = 'http://xkcd.com/',
     METADATA_URL = 'info.0.json',
     XKCD_TEMPLATE,
-    XKCD_UNRECOGINZED_OPTION;
+    XKCD_UNRECOGINZED_OPTION,
+    CSE_ID,
+    CSE_KEY;
+
+CSE_KEY = config.cseKey;
+CSE_ID = config.cseId;
 
 XKCD_UNRECOGINZED_OPTION = 'I dont undertstand that option :disappointed: '
-XKCD_UNRECOGINZED_OPTION += '\n Please try one of these options `/showme xkcd [latest|random|comic_num]`';
+XKCD_UNRECOGINZED_OPTION += '\n Please try one of these options `/showme xkcd [latest|random|comicNum]`';
 
 XKCD_TEMPLATE = {
   fallback: 'You broke it.. There should be a comic here..',
@@ -27,43 +33,65 @@ var FALLBACK_MSG = {
   text: 'Something went wrong in fetching the comic :disappointed: Please Try again.',
   icon_emoji: ':skull_and_crossbones:'
 };
-
-var getLatest =  function (callback) {
-  request(DOMAIN_URL + METADATA_URL, function (err, res, body) {
-    if (!err && res.statusCode == 200) {
-      var reqResult = JSON.parse(body);
-      var result = {
-        'title': reqResult['title'],
-        'alttext': reqResult['alt'],
-        'comic_url': DOMAIN_URL ,
-        'img_url': reqResult['img'],
-        'latest_num' : reqResult['num']
+var searchComic = function (searchQuery, callback) {
+  var searchURL = 'https://www.googleapis.com/customsearch/v1',
+      searchParams = {
+        q: searchQuery,
+        cx: CSE_ID,
+        key: CSE_KEY
       };
-      return callback(null, result);
+  reqHelper.doGET(searchURL, searchParams, function (err, searchResult) {
+    if (err || _.has(searchResult, 'items') === false) {
+      if (err) {
+        logger.error("Error doing search : %s", err.message);
+      } else {
+        logger.error("No results for search term %s ", searchQuery);
+      }
+      getLatest( function (err, jsonResult) {
+        if (!err) {
+          logger.debug('Got latest comic instead of requested searchQuery %s', searchQuery);
+          jsonResult.feedback = 'Couldn\'t find comic for search term \''  + searchQuery + '\'\n' ;
+          jsonResult.feedback += 'Fear not, here is the latest comic instead ! :smiley:';
+        }
+        callback(err, jsonResult);
+      });
     } else {
-      return callback(err, null);
+      logger.debug("Found results for search term %s", searchQuery);
+      var baseLink = _.get(searchResult, 'items[0].link');
+      reqHelper.doGET(baseLink + METADATA_URL, null, callback);
+    }
+  });
+};
+var getLatest =  function (callback) {
+  var result;
+  reqHelper.doGET(DOMAIN_URL + METADATA_URL, null, function(err, jsonResult) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, jsonResult);
     }
   });
 };
 
-var getComicNum = function ( comic_num, callback) {
-  if (comic_num < 0) {
+var getComicNum = function ( comicNum, callback) {
+  if (comicNum < 0) {
     return this.getLatest(callback);
   }
-  var comic_url = DOMAIN_URL + comic_num.toString(),
-      metadata_url = comic_url + '/' + METADATA_URL;
-  request(metadata_url, function (err, res, body) {
-    if (!err && res.statusCode == 200) {
-      var reqResult = JSON.parse(body);
-      var result = {
-        'title': reqResult['title'],
-        'alttext': reqResult['alt'],
-        'comic_url': comic_url,
-        'img_url': reqResult['img'],
-      };
-      return callback(null, result);
+  var metadata_url = DOMAIN_URL + comicNum.toString() + '/' + METADATA_URL;
+  reqHelper.doGET(metadata_url, null, function (err, jsonResult) {
+    if (err) {
+      getLatest( function (err, jsonResult) {
+        if (!err) {
+          logger.debug('Got latest comic instead of requested');
+          jsonResult.feedback = 'Couldn\'t find comic #' + comicNum.toString();
+          jsonResult.feedback += ' Latest Comic is #' + jsonResult.num.toString();
+          callback(null, jsonResult);
+        } else {
+          callback(err, null);
+        }
+      });
     } else {
-      return callback('Not Found - 404', null);
+      callback(null, jsonResult);
     }
   });
 };
@@ -71,17 +99,17 @@ var getComicNum = function ( comic_num, callback) {
 var getRandom = function (callback) {
   async.waterfall([
     function (next) {
-      getLatest(function (err, result) {
+      getLatest(function (err, latestMetadata) {
         if (err) {
           next(err, null);
         } else {
-          var comic_num = Math.floor(Math.random() * result['latest_num'] +1);
-          next(null, comic_num);
+          var comicNum = Math.floor(Math.random() * latestMetadata['num'] +1);
+          next(null, comicNum);
         }
       });
     },
-    function (comic_num, next) {
-      getComicNum(comic_num, next);
+    function (comicNum, next) {
+      getComicNum(comicNum, next);
     }
   ],
   function (err, result) {
@@ -105,46 +133,32 @@ var getXkcdComic = function (whichComic, callback) {
       var comicNum = Number(whichComic);
       logger.debug("Requested Comic Num : , %d", comicNum);
       if (!isNaN(comicNum)) {
-        getComicNum(comicNum, function (err, metadata) {
-          if (err) {
-            logger.debug('Error retrieving comic #%d, Getting Latest', comicNum);
-            getLatest( function (err, metadata) {
-              if (!err) {
-                logger.debug('Got latest comic instead of requested');
-                metadata.feedback = 'Couldn\'t find comic #' + comicNum.toString();
-                metadata.feedback += ' Latest Comic is #' + metadata.latest_num.toString();
-                callback(null, metadata);
-              } else {
-                callback(err, null);
-              }
-            });
-          } else {
-            callback(null, metadata);
-          }
-        });
+        getComicNum(comicNum, callback);
       } else {
-        logger.error('unrecognized option %s passed', whichComic);
-        callback(XKCD_UNRECOGINZED_OPTION, null);
+        searchComic(whichComic, callback)
       }
     }
   }
 };
-var formatMessage = function (xkcdMetadata, callback) {
+
+var formatMessage = function (xkcdMetadata) {
   var formattedMessage = _.cloneDeep(XKCD_TEMPLATE),
       formattedAttachment = {'attachments' : [] };
 
   formattedMessage.title = xkcdMetadata.title;
-  formattedMessage.title_link = xkcdMetadata.comic_url;
-  formattedMessage.text = xkcdMetadata.alttext;
-  formattedMessage.image_url = xkcdMetadata.img_url;
+  formattedMessage.title_link = DOMAIN_URL + xkcdMetadata.num.toString();
+  formattedMessage.text = xkcdMetadata.alt;
+  formattedMessage.image_url = xkcdMetadata.img;
+  formattedMessage.fallback = xkcdMetadata.title + ' ' + DOMAIN_URL + xkcdMetadata.num.toString();
   if (xkcdMetadata.feedback) {
     formattedMessage.pretext = xkcdMetadata.feedback;
   } else {
     formattedMessage.pretext = 'Here is the comic ! ';
   }
   formattedAttachment.attachments.push(formattedMessage);
-  callback(null, formattedAttachment);
+  return formattedAttachment;
 }
+
 /**
 * we expect the argument to be either a number or the text 'latest' | 'random'
 * if 'latest' return the latest comic.
@@ -155,7 +169,7 @@ var xkcdHandler = function (req_args, callback) {
   logger.debug('Req Args ', req_args);
   var xkcd_args, xkcd_data;
   if (req_args.length > 0 ) {
-    xkcd_args = req_args[0];
+    xkcd_args = req_args.join(' ');
   } else {
     xkcd_args = 'random';
   }
@@ -164,16 +178,13 @@ var xkcdHandler = function (req_args, callback) {
       getXkcdComic(xkcd_args, next);
     },
     function (result, next) {
-      formatMessage(result, next);
+      var formattedMessage = formatMessage(result);
+      next(null, formattedMessage);
     }
   ],
   function (err, xkcdComic) {
     if (err) {
-      var errMsg = _.cloneDeep(FALLBACK_MSG);
-      if (err === XKCD_UNRECOGINZED_OPTION) {
-        errMsg.text = XKCD_UNRECOGINZED_OPTION;
-      }
-      return callback(errMsg);
+      return callback(FALLBACK_MSG);
     } else {
       return callback(xkcdComic);
     }
